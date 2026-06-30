@@ -1,14 +1,14 @@
-from pymycobot.mycobot320 import MyCobot320
+from pymycobot.mycobot import MyCobot
 import time
 
 # ===============================
 # 接続設定
 # ===============================
-mc = MyCobot320("/dev/ttyAMA0", 115200)
+mc = MyCobot("/dev/ttyAMA0", 115200)
 
 time.sleep(2)
 
-print("===== myCobot 320 Pi =====")
+print("===== myCobot Pi =====")
 
 # ===============================
 # 現在位置取得
