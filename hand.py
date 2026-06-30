@@ -11,7 +11,7 @@ time.sleep(2)
 
 print("===== myCobot Pi =====")
 
-if mc.power_on():
+if mc.is_power_on():
     print("電源ON")
 else:
     print("電源ONに失敗しました。")
