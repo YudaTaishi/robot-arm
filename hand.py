@@ -5,6 +5,7 @@ import time
 # 接続設定
 # ===============================
 mc = MyCobot("/dev/ttyAMA0", 115200)
+mc.power_on()
 
 time.sleep(2)
 
