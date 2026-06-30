@@ -10,7 +10,17 @@ time.sleep(2)
 
 print("===== myCobot Pi =====")
 
+if mc.power_on():
+    print("電源ON")
+else:
+    print("電源ONに失敗しました。")
+    exit()
+
+time.sleep(2)
+
 mc.send_angles([0, 0, 0, 0, 0, 0], 20)
+
+time.sleep(5)
 
 # ===============================
 # 現在位置取得
