@@ -1,13 +1,13 @@
 from pymycobot.mycobot import MyCobot
+from pymycobot import PI_PORT, PI_BAUD
 import time
 
 # ===============================
 # 接続設定
 # ===============================
-mc = MyCobot("/dev/ttyAMA0", 115200)
+mc = MyCobot(PI_PORT, 115200)
+mc.power_off()
 mc.power_on()
-
-time.sleep(2)
 
 print("===== myCobot Pi =====")
 
@@ -21,7 +21,7 @@ time.sleep(2)
 
 mc.send_angles([0, 0, 0, 0, 0, 0], 20)
 
-time.sleep(5)
+time.sleep(2)
 
 # ===============================
 # 現在位置取得
