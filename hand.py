@@ -1,11 +1,11 @@
-from pymycobot.mycobot import MyCobot
+from pymycobot.mycobot320 import MyCobot320
 from pymycobot import PI_PORT, PI_BAUD
 import time
 
 # ===============================
 # 接続設定
 # ===============================
-mc = MyCobot(PI_PORT, 115200)
+mc = MyCobot320(PI_PORT, 115200)
 mc.power_off()
 mc.power_on()
 
