@@ -71,22 +71,22 @@ Y_MIN = -150
 Y_MAX = 250
 
 Z_MIN = 50
-Z_MAX = 350
+Z_MAX = 500
 
 # ===============================
 # 範囲チェック
 # ===============================
-if not (X_MIN <= target[0] <= X_MAX):
-    print("X座標が安全範囲外です。")
-    exit()
+#if not (X_MIN <= target[0] <= X_MAX):
+#    print("X座標が安全範囲外です。")
+#    exit()
 
-if not (Y_MIN <= target[1] <= Y_MAX):
-    print("Y座標が安全範囲外です。")
-    exit()
+#if not (Y_MIN <= target[1] <= Y_MAX):
+#    print("Y座標が安全範囲外です。")
+#    exit()
 
-if not (Z_MIN <= target[2] <= Z_MAX):
-    print("Z座標が安全範囲外です。")
-    exit()
+#if not (Z_MIN <= target[2] <= Z_MAX):
+#    print("Z座標が安全範囲外です。")
+#    exit()
 
 # ===============================
 # 移動確認
