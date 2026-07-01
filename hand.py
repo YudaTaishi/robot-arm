@@ -11,6 +11,8 @@ mc.power_on()
 
 print("===== myCobot Pi =====")
 
+print(mc.is_power_on())
+
 if mc.is_power_on():
     print("電源ON")
 else:
