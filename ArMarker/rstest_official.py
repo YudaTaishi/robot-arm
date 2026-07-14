@@ -5,7 +5,7 @@ pipeline.start() # Start streaming
 
 try:
     while True:
-        frames = pipeline.wait_for_frames()
+        frames = pipeline.wait_for_frames(10000) # Wait for a new set of frames with a timeout of 10 seconds
         depth_frame = frames.get_depth_frame()
         if not depth_frame:
             continue
