@@ -51,7 +51,21 @@ try:
 
     # Start streaming
     pipeline.start(config)
-    print("RealSense camera connected and streaming.")
+    
+    profile = pipeline.get_active_profile()
+
+    print("=== Active Streams ===")
+    for stream in profile.get_streams():
+        vsp = stream.as_video_stream_profile()
+        print(
+            stream.stream_name(),
+            vsp.width(),
+            "x",
+            vsp.height(),
+            "@",
+            vsp.fps()
+        )
+        print("RealSense camera connected and streaming.")
 
     try:
         # Allow the camera to warm up
