@@ -71,6 +71,7 @@ try:
         # Allow the camera to warm up
         for _ in range(30):  # Get about 30 frames
             #pipeline.wait_for_frames()
+            #タイムアウトエラー解消のためだったがあまり意味はない
             while True:
                 flag,frames = pipeline.try_wait_for_frames()
                 if flag == False: break
