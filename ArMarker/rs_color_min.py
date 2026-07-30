@@ -1,40 +1,42 @@
 import pyrealsense2 as rs
-import numpy as np
-import cv2
+import time
 
 pipeline = rs.pipeline()
 config = rs.config()
 
 config.enable_stream(
     rs.stream.color,
-    640,
+    848,
     480,
-    rs.format.bgr8,
+    rs.format.yuyv,
     30
 )
 
-pipeline.start(config)
-
 print("start")
 
-try:
-    while True:
-        frames = pipeline.wait_for_frames()
+pipeline.start(config)
 
-        color_frame = frames.get_color_frame()
+print("started")
 
-        if not color_frame:
-            continue
+time.sleep(2)
 
-        color_image = np.asanyarray(
-            color_frame.get_data()
+for i in range(20):
+
+    frames = pipeline.wait_for_frames(
+        timeout_ms=5000
+    )
+
+    color = frames.get_color_frame()
+
+    if color:
+        print(
+            i,
+            "color OK",
+            color.get_width(),
+            color.get_height(),
+            color.get_profile().format()
         )
+    else:
+        print(i,"no color")
 
-        cv2.imshow("Color", color_image)
-
-        if cv2.waitKey(1) == 27:
-            break
-
-finally:
-    pipeline.stop()
-    cv2.destroyAllWindows()
+pipeline.stop()
