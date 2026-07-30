@@ -7,7 +7,6 @@ pipeline = rs.pipeline()
 config = rs.config()
 
 
-# Color
 config.enable_stream(
     rs.stream.color,
     848,
@@ -30,10 +29,23 @@ while True:
         continue
 
 
-    # YUYV画像取得
+    # 取得データ
     yuyv = np.asanyarray(
         color_frame.get_data()
     )
+
+
+    print("shape:", yuyv.shape)
+
+
+    # YUYV形式へ修正
+    if len(yuyv.shape) == 2:
+
+        yuyv = yuyv.reshape(
+            480,
+            848,
+            2
+        )
 
 
     # YUYV → BGR
