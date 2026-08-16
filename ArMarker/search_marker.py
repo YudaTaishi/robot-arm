@@ -1,125 +1,251 @@
 import cv2
 import numpy as np
 import pyrealsense2 as rs
-from pymycobot.mycobot import MyCobot
-from pymycobot import PI_PORT, PI_BAUD
 
-####################################################
-# myCobot
-####################################################
-mc = MyCobot(PI_PORT, PI_BAUD)
 
-####################################################
-# RealSense
-####################################################
+# ==========================================
+# RealSense 初期化
+# ==========================================
+
 pipeline = rs.pipeline()
 config = rs.config()
 
-config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+# カラー画像
+config.enable_stream(
+    rs.stream.color,
+    640, 480,
+    rs.format.bgr8,
+    30
+)
+
+# 深度画像
+config.enable_stream(
+    rs.stream.depth,
+    640, 480,
+    rs.format.z16,
+    30
+)
 
 profile = pipeline.start(config)
 
+
+# ==========================================
+# Depth → Color の位置合わせ
+# ==========================================
+
 align = rs.align(rs.stream.color)
 
-intrinsics = profile.get_stream(
-    rs.stream.color
-).as_video_stream_profile().get_intrinsics()
 
-####################################################
-# ArUco
-####################################################
+# ==========================================
+# カメラ内部パラメータ
+# ==========================================
+
+color_profile = profile.get_stream(
+    rs.stream.color
+).as_video_stream_profile()
+
+color_intrinsics = color_profile.get_intrinsics()
+
+
+# ==========================================
+# ArUco設定
+# ==========================================
+
 aruco_dict = cv2.aruco.getPredefinedDictionary(
     cv2.aruco.DICT_4X4_50
 )
 
+parameters = cv2.aruco.DetectorParameters()
+
 detector = cv2.aruco.ArucoDetector(
     aruco_dict,
-    cv2.aruco.DetectorParameters()
+    parameters
 )
 
-####################################################
-# HandEye
-####################################################
-# 例
-R = np.eye(3)
 
-t = np.array([
-    [0.10],
-    [0.02],
-    [0.15]
-])
+print("RealSense started.")
+print("ArUco marker detection started.")
+print("Press 'q' to quit.")
 
-####################################################
-while True:
 
-    frames = pipeline.wait_for_frames()
+try:
 
-    frames = align.process(frames)
+    while True:
 
-    color_frame = frames.get_color_frame()
-    depth_frame = frames.get_depth_frame()
+        # ==================================
+        # フレーム取得
+        # ==================================
 
-    if not color_frame or not depth_frame:
-        continue
+        frames = pipeline.wait_for_frames()
 
-    color = np.asanyarray(color_frame.get_data())
+        # DepthをColorに位置合わせ
+        aligned_frames = align.process(frames)
 
-    corners, ids, _ = detector.detectMarkers(color)
+        depth_frame = aligned_frames.get_depth_frame()
+        color_frame = aligned_frames.get_color_frame()
 
-    if ids is not None:
+        if not depth_frame or not color_frame:
+            continue
 
-        cv2.aruco.drawDetectedMarkers(color, corners, ids)
 
-        c = corners[0][0]
+        # ==================================
+        # OpenCV画像へ変換
+        # ==================================
 
-        center_x = int(np.mean(c[:,0]))
-        center_y = int(np.mean(c[:,1]))
-
-        depth = depth_frame.get_distance(center_x, center_y)
-
-        point = rs.rs2_deproject_pixel_to_point(
-            intrinsics,
-            [center_x, center_y],
-            depth
+        color_image = np.asanyarray(
+            color_frame.get_data()
         )
 
-        camera_point = np.array(point).reshape(3,1)
 
-        robot_point = R @ camera_point + t
+        # ==================================
+        # ArUco検出
+        # ==================================
 
-        x = robot_point[0,0] * 1000
-        y = robot_point[1,0] * 1000
-        z = robot_point[2,0] * 1000
-
-        print("--------------------------------")
-        print("Camera")
-        print(camera_point)
-
-        print("Robot")
-        print(robot_point)
-
-        cv2.circle(color, (center_x, center_y), 5, (0,0,255), -1)
-
-        ####################################################
-        # ロボット移動
-        ####################################################
-        rx = 180
-        ry = 0
-        rz = 0
-
-        mc.send_coords(
-            [x, y, z, rx, ry, rz],
-            30,
-            1
+        corners, ids, rejected = detector.detectMarkers(
+            color_image
         )
 
-    cv2.imshow("RealSense", color)
 
-    key = cv2.waitKey(1)
+        # ==================================
+        # マーカーが見つかった場合
+        # ==================================
 
-    if key == 27:
-        break
+        if ids is not None:
 
-pipeline.stop()
-cv2.destroyAllWindows()
+            cv2.aruco.drawDetectedMarkers(
+                color_image,
+                corners,
+                ids
+            )
+
+
+            for i, marker_id in enumerate(ids):
+
+                # ------------------------------
+                # マーカー4隅
+                # ------------------------------
+
+                corner = corners[i][0]
+
+                # corner:
+                # [0] 左上
+                # [1] 右上
+                # [2] 右下
+                # [3] 左下
+
+                # ------------------------------
+                # マーカー中心座標
+                # ------------------------------
+
+                center_x = int(
+                    np.mean(corner[:, 0])
+                )
+
+                center_y = int(
+                    np.mean(corner[:, 1])
+                )
+
+
+                # ------------------------------
+                # 中心画素の深度
+                # ------------------------------
+
+                depth = depth_frame.get_distance(
+                    center_x,
+                    center_y
+                )
+
+
+                # 深度が取得できなかった場合
+                if depth <= 0:
+
+                    print(
+                        f"ID {marker_id[0]}: "
+                        "Depth unavailable"
+                    )
+
+                    continue
+
+
+                # ==================================
+                # 画像座標 → 3次元座標
+                # ==================================
+
+                point_3d = rs.rs2_deproject_pixel_to_point(
+                    color_intrinsics,
+                    [center_x, center_y],
+                    depth
+                )
+
+
+                X = point_3d[0]
+                Y = point_3d[1]
+                Z = point_3d[2]
+
+
+                # ==================================
+                # 座標表示
+                # ==================================
+
+                print(
+                    f"ID {marker_id[0]} : "
+                    f"X = {X:.3f} m, "
+                    f"Y = {Y:.3f} m, "
+                    f"Z = {Z:.3f} m"
+                )
+
+
+                # ==================================
+                # 画像上に中心点を描画
+                # ==================================
+
+                cv2.circle(
+                    color_image,
+                    (center_x, center_y),
+                    5,
+                    (0, 0, 255),
+                    -1
+                )
+
+
+                # ==================================
+                # 画像上に座標表示
+                # ==================================
+
+                text = (
+                    f"ID:{marker_id[0]} "
+                    f"X:{X:.3f} "
+                    f"Y:{Y:.3f} "
+                    f"Z:{Z:.3f}"
+                )
+
+                cv2.putText(
+                    color_image,
+                    text,
+                    (center_x - 100, center_y - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),
+                    2
+                )
+
+
+        # ==================================
+        # 画像表示
+        # ==================================
+
+        cv2.imshow(
+            "RealSense ArUco",
+            color_image
+        )
+
+
+        # qキーで終了
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+
+finally:
+
+    pipeline.stop()
+    cv2.destroyAllWindows()
