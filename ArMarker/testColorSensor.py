@@ -1,4 +1,6 @@
 #realsenseのカラーセンサーのみのテストコード
+#これはSDK使用のためカラー画像が取得できない場合あり
+#SDK不使用の場合はカラー画像取得可能
 
 import pyrealsense2 as rs
 import numpy as np
