@@ -1,137 +1,118 @@
-import numpy as np
+#OpenCVで取得したカラー画像からAruco検出
+
 import cv2
 
+# ==========================================
+# Camera settings
+# ==========================================
+cap = cv2.VideoCapture("/dev/video4", cv2.CAP_V4L2)
 
-# ==============================
-# RealSense 初期化
-# ==============================
-pipeline = rs.pipeline()
-config = rs.config()
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap.set(cv2.CAP_PROP_FPS, 30)
 
-config.enable_stream(rs.stream.color, 848, 480, rs.format.bgr8, 30)
-config.enable_stream(rs.stream.depth, 848, 480, rs.format.z16, 30)
+if not cap.isOpened():
+    print("カメラを開けませんでした")
+    exit()
 
-config.enable_stream(
-    rs.stream.color,
-    848,
-    480,
-    rs.format.bgr8,
-    30
+# ==========================================
+# ArUco settings
+# ==========================================
+dictionary = cv2.aruco.getPredefinedDictionary(
+    cv2.aruco.DICT_4X4_50
 )
-profile = pipeline.start(config)
 
-# 深度画像をカラー画像の座標系に合わせる
-align = rs.align(rs.stream.color)
-
-pipeline.start(config)
-# カラーカメラの内部パラメータ（3D復元に使用）
-intrinsics = profile.get_stream(
-    rs.stream.color
-).as_video_stream_profile().get_intrinsics()
-
-# ==============================
-# ArUco 辞書設定
-# ==============================
-aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
 parameters = cv2.aruco.DetectorParameters()
 
+detector = cv2.aruco.ArucoDetector(
+    dictionary,
+    parameters
+)
+
+print("ArUco検出を開始します")
+print("終了するには q を押してください")
+
+# ==========================================
+# Main loop
+# ==========================================
 while True:
 
-    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
+    ret, frame = cap.read()
 
-    frames = pipeline.wait_for_frames()
-    print("ESCキーで終了")
+    if not ret:
+        print("フレームを取得できません")
+        continue
 
-    color_frame = frames.get_color_frame()
-    try:
-        while True:
+    # --------------------------------------
+    # ArUco marker detection
+    # --------------------------------------
+    corners, ids, rejected = detector.detectMarkers(frame)
 
-    if not color_frame:
-         continue
-        # ==============================
-        # フレーム取得（深度をカラーに整列）
-        # ==============================
-        frames = pipeline.wait_for_frames()
-        frames = align.process(frames)
+    # マーカーが検出された場合
+    if ids is not None:
 
-        color_frame = frames.get_color_frame()
-        depth_frame = frames.get_depth_frame()
-
-        color_image = np.asanyarray(
-          color_frame.get_data()
+        # マーカーを画像に描画
+        cv2.aruco.drawDetectedMarkers(
+            frame,
+            corners,
+            ids
         )
-        if not color_frame or not depth_frame:
-            continue
 
-        image = np.asanyarray(color_frame.get_data())
+        # 検出されたマーカーごとに処理
+        for i, marker_id in enumerate(ids):
 
-    print(color_image.shape)
-        # ==============================
-        # ArUco 検出
-        # ==============================
-        corners, ids, rejected = detector.detectMarkers(image)
+            # 4隅の座標
+            points = corners[i][0]
 
-        if ids is not None:
+            # 中心座標
+            center_x = int(points[:, 0].mean())
+            center_y = int(points[:, 1].mean())
 
-    cv2.imshow(
-        "RealSense Color",
-        color_image
-    )
-            cv2.aruco.drawDetectedMarkers(image, corners, ids)
+            # 中心に点を描画
+            cv2.circle(
+                frame,
+                (center_x, center_y),
+                5,
+                (0, 0, 255),
+                -1
+            )
 
-            for i in range(len(ids)):
-                marker_id = int(ids[i][0])
+            # IDと中心座標を表示
+            cv2.putText(
+                frame,
+                f"ID: {marker_id[0]}",
+                (center_x + 10, center_y - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 0),
+                2
+            )
 
-    if cv2.waitKey(1) == 27:
+            cv2.putText(
+                frame,
+                f"Center: ({center_x}, {center_y})",
+                (center_x + 10, center_y + 15),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 0),
+                2
+            )
+
+            # ターミナルにも表示
+            print(
+                f"ID={marker_id[0]}, "
+                f"Center=({center_x}, {center_y})"
+            )
+
+    # --------------------------------------
+    # Display
+    # --------------------------------------
+    cv2.imshow("D435 Color + ArUco", frame)
+
+    # qで終了
+    if cv2.waitKey(1) & 0xFF == ord("q"):
         break
-                corner = corners[i][0]
 
-                center_x = int(np.mean(corner[:, 0]))
-                center_y = int(np.mean(corner[:, 1]))
 
-pipeline.stop()
+cap.release()
 cv2.destroyAllWindows()
- No newline at end of file
-                # マーカ中心までの距離[m]
-                depth = depth_frame.get_distance(center_x, center_y)
-
-                # ピクセル座標 + 深度 → カメラ座標系の3D点[m]
-                point = rs.rs2_deproject_pixel_to_point(
-                    intrinsics,
-                    [center_x, center_y],
-                    depth,
-                )
-
-                x, y, z = point
-
-                print(
-                    f"ID:{marker_id}  "
-                    f"距離={depth:.3f}m  "
-                    f"XYZ=({x:.3f}, {y:.3f}, {z:.3f})"
-                )
-
-                cv2.circle(image, (center_x, center_y), 5, (0, 0, 255)
-, -1)
-
-                cv2.putText(
-                    image,
-                    f"ID:{marker_id} {depth:.2f}m",
-                    (center_x + 10, center_y - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6,
-                    (0, 0, 255),
-                    2,
-                )
-
-        # ==============================
-        # 表示
-        # ==============================
-        cv2.imshow("RealSense ArUco Detection", image)
-
-        key = cv2.waitKey(1)
-        if key == 27:   # ESC
-            break
-
-finally:
-    pipeline.stop()
-    cv2.destroyAllWindows()
