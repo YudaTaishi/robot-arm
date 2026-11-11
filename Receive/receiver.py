@@ -5,7 +5,7 @@ Raspberry Pi側: Windowsから送られたArUco座標をUDPで受信して表示
 import json
 import socket
 
-LISTEN_IP = "172.21.10.148"
+LISTEN_IP = "0.0.0.0"
 LISTEN_PORT = 5005
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
